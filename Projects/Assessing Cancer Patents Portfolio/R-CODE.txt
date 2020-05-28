@@ -1,0 +1,224 @@
+set.seed(31)
+install.packages("tm")
+library(tm)
+data=read.csv("HW3.csv")
+str(data)
+yt=strptime(data$Filing_Date, format ='%Y%m%d')
+data$year= as.integer(format(yt,"%Y"))
+mydatatitle=data$Patent_Title
+ndocs =length(mydatatitle)
+minf=ndocs*0.02
+maxf=ndocs*0.50
+corpus=Corpus(VectorSource(mydatatitle))
+dtm = DocumentTermMatrix(corpus,control=list(stopwords=TRUE, wordLengths=c(4,25),removePunctuation = FALSE,removeNumbers = FALSE, bounds = list(global=c(minf,maxf))))
+inspect(dtm)
+dtmm=as.matrix(dtm)
+write.csv(dtmm,"cancerdtm.csv")
+View(dtmm)
+FreqMat=data.frame(ST = colnames(dtmm), Freq = colSums(dtmm))
+y= as.vector(order(-FreqMat$Freq))
+data1=FreqMat[y,]
+head(FreqMat[y,],n=10)
+head(FreqMat[y,],n=20)
+library(wordcloud)
+library(RColorBrewer)
+na.omit(data1)
+wordcloud(words = data1$ST, freq = data1$Freq, min.freq = 3000,
+          max.words=400, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+bigdata= cbind(data$Family_ID,data$Patent_or_Publication_ID,as.data.frame(as.matrix(dtm)),make.row.names=TRUE)
+str(bigdata)
+write.csv(bigdata,"cancerbigdtm.csv")                       
+# answer 2 
+#K by kmeans 
+library(caret)
+preproc=preProcess(dtmm)
+cancer=predict(preproc,dtmm)
+nc=14
+kmc.cancer=kmeans(dtmm, centers = 14)
+table(kmc.cancer$cluster)
+kmc.cancer$centers
+
+for (i in 1:nc)
+{
+  clusterdata = subset(as.data.frame(dtmm), kmc.cancer$cluster == i)
+  vv <- as.data.frame(tail(sort(colMeans(clusterdata)), n=nb))
+  topwords[i,]<- rownames(vv)
+}
+print(topwords)
+#used fviz_nbclust silhouette method.
+#answer 2 by hierachial 
+distances = dist(cancer, method="euclidean")
+HierClustering = hclust(distances, method="ward.D2")
+plot(HierClustering)
+clusterGroups = cutree(HierClustering, k = 14)
+rect.hclust(HierClustering,k=14, border="red")
+table(clusterGroups)
+kmax=20
+fviz_nbclust(cancer, FUN = hcut, method = "silhouette", k.max=kmax)
+#taking number of clusters = 14 that is optimal that i obatined by hierachial cluster analysis
+
+#answer3
+library(tm)
+data=read.csv("HW3.csv")
+str(data)
+yt=strptime(data$Filing_Date, format ='%Y%m%d')
+data$year= as.integer(format(yt,"%Y"))
+mydatatitle1= data$CPC_Inventive
+ndocs =length(mydatatitle1)
+minf=ndocs*0.01
+maxf=ndocs*0.50
+corpus=Corpus(VectorSource(mydatatitle1))
+dtm1 = DocumentTermMatrix(corpus,control=list(stopwords=TRUE, wordLengths=c(4,25),removePunctuation = FALSE,removeNumbers = FALSE, bounds = list(global=c(minf,maxf))))
+inspect(dtm1)
+dtmm1=as.matrix(dtm1)
+write.csv(dtmm1,"cancerdtm1.csv")
+View(dtmm1)
+FreqMat=data.frame(ST = colnames(dtmm1), Freq = colSums(dtmm1))
+y= as.vector(order(-FreqMat$Freq))
+data2=FreqMat[y,]
+head(FreqMat[y,],n=10)
+head(FreqMat[y,],n=20)
+wordcloud(words = data2$ST, freq = data2$Freq, min.freq = 3000,
+          max.words=400, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+bigdata1= cbind(data$Family_ID,data$Patent_or_Publication_ID,as.data.frame(as.matrix(dtm1)),as.data.frame(as.matrix(dtm)),make.row.names=TRUE)
+str(bigdata1)
+write.csv(bigdata1,"cancerbigdtm1.csv") 
+library(caret)
+preproc=preProcess(bigdata1)
+cancer1=predict(preproc,bigdata1)
+nc=8
+kmc.cancer1=kmeans(bigdata1[,c(-1,-2)], centers = nc )
+table(kmc.cancer1$cluster)
+kmc.cancer1$centers
+#0.5 marks # used low number of data for the optimal clusters  as fviz was not 
+#running for large data sets was giving error of memory.
+kmax=10
+library(cluster)
+library(factoextra)
+fviz_nbclust(cancer1, FUN = kmeans, method = "silhouette", k.max=kmax, nstart=1)
+nb =14
+topwords <-matrix(0,nrow=nc,ncol=nb)
+for (i in 1:nc)
+{
+  clusterdata = subset(bigdata1[,c(-1,-2)], kmc.cancer1$cluster == i)
+  vv <- as.data.frame(tail(sort(colMeans(clusterdata)), n=nb))
+  topwords[i,]<- rownames(vv)
+}
+print(topwords)
+
+#answer 4
+#NOVARTIS
+indicesnovartis=grep("NOVARTIS",data$FDA_Applicant)
+mydatanova=data[indicesnovartis,]
+mydatanovartis=subset(mydatanova,mydatanova$year>=1999)
+str(mydatanovartis)
+library(tm)
+yt=strptime(data$Filing_Date, format ='%Y%m%d')
+data$year= as.integer(format(yt,"%Y"))
+mydatatitle2=mydatanovartis$Patent_Title
+ndocs =length(mydatatitle2)
+minf=ndocs*0.01
+maxf=ndocs*0.40
+corpus=Corpus(VectorSource(mydatatitle2))
+dtm2= DocumentTermMatrix(corpus,control=list(stopwords=TRUE, wordLengths=c(4,25),removePunctuation = FALSE,removeNumbers = FALSE, bounds = list(global=c(minf,maxf))))
+dtmm2=as.matrix(dtm2)
+mydatatitle2= mydatanovartis$CPC_Inventive
+ndocs =length(mydatatitle2)
+minf=ndocs*0.01
+maxf=ndocs*0.40
+corpus=Corpus(VectorSource(mydatatitle2))
+dtm3 = DocumentTermMatrix(corpus,control=list(stopwords=TRUE, wordLengths=c(4,25),removePunctuation = FALSE,removeNumbers = FALSE, bounds = list(global=c(minf,maxf))))
+dtmm3=as.matrix(dtm3)
+write.csv(dtmm3,"cancerdtm1.csv")
+FreqMat=data.frame(ST = colnames(dtmm3), Freq = colSums(dtmm3))
+y= as.vector(order(-FreqMat$Freq))
+data3=FreqMat[y,]
+head(FreqMat[y,],n=10)
+head(FreqMat[y,],n=20)
+wordcloud(words = data3$ST, freq = data3$Freq, min.freq = 3000,
+          max.words=400, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(10, "Dark2"))
+
+bigdatanew= cbind(mydatanovartis$Family_ID ,mydatanovartis$Patent_or_Publication_ID,as.data.frame(as.matrix(dtm2)),as.data.frame(as.matrix(dtm3)),make.row.names=TRUE)
+str(bigdatanew)
+write.csv(bigdatanew,"cancerbigdtmnew.csv") 
+library(caret)
+preproc=preProcess(bigdatanew)
+cancer3=predict(preproc,bigdatanew)
+nc=5
+kmc.cancer3=kmeans(bigdatanew[,c(-1,-2)], centers = nc )
+table(kmc.cancer3$cluster)
+kmc.cancer3$centers
+kmax=10
+fviz_nbclust(bigdatanew, FUN = kmeans, method = "silhouette", k.max=kmax, nstart=1)
+nb =10
+topwords <-matrix(0,nrow=nc,ncol=nb)
+for (i in 1:nc)
+{
+  clusterdata = subset(bigdatanew[,c(-1,-2)], kmc.cancer3$cluster == i)
+  vv <- as.data.frame(tail(sort(colMeans(clusterdata)), n=nb))
+  topwords[i,]<- rownames(vv)
+}
+print(topwords)
+kmax=10
+fviz_nbclust(can, FUN = kmeans, method = "silhouette", k.max=kmax, nstart=1)
+
+
+#ANSWER 5 
+#DREXEL UNIVERSITY
+indicesnovartis=grep("DREXEL UNIVERSITY",data$NIH_Grant_Recipient_Organization)
+mydataAUBURN=data[indicesnovartis,]
+mydataAUB=subset(mydataAUBURN,mydataAUBURN$year>=1999)
+str(mydataAUB)
+library(tm)
+yt=strptime(data$Filing_Date, format ='%Y%m%d')
+data$year= as.integer(format(yt,"%Y"))
+mydatatitle2=mydataAUB$Patent_Title
+ndocs =length(mydatatitle2)
+minf=ndocs*0.01
+maxf=ndocs*0.40
+corpus=Corpus(VectorSource(mydatatitle2))
+dtm2= DocumentTermMatrix(corpus,control=list(stopwords=TRUE, wordLengths=c(4,25),removePunctuation = FALSE,removeNumbers = FALSE, bounds = list(global=c(minf,maxf))))
+dtmm2=as.matrix(dtm2)
+mydatatitle2= mydataAUB$CPC_Inventive
+ndocs =length(mydatatitle2)
+minf=ndocs*0.01
+maxf=ndocs*0.40
+corpus=Corpus(VectorSource(mydatatitle2))
+dtm3 = DocumentTermMatrix(corpus,control=list(stopwords=TRUE, wordLengths=c(4,25),removePunctuation = FALSE,removeNumbers = FALSE, bounds = list(global=c(minf,maxf))))
+dtmm3=as.matrix(dtm3)
+write.csv(dtmm3,"cancerdtm1.csv")
+FreqMat=data.frame(ST = colnames(dtmm2), Freq = colSums(dtmm2))
+y= as.vector(order(-FreqMat$Freq))
+data3=FreqMat[y,]
+head(FreqMat[y,],n=10)
+head(FreqMat[y,],n=20)
+wordcloud(words = data3$ST, freq = data3$Freq, min.freq = 1000,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+bigdatanew= cbind(mydataAUB$Family_ID ,mydataAUB$Patent_or_Publication_ID,as.data.frame(as.matrix(dtm2)),as.data.frame(as.matrix(dtm3)),make.row.names=TRUE)
+str(bigdatanew)
+write.csv(bigdatanew,"cancerbigdtmnew.csv") 
+library(caret)
+preproc=preProcess(bigdatanew)
+cancer3=predict(preproc,bigdatanew)
+nc=5
+kmc.cancer3=kmeans(bigdatanew[,c(-1,-2)], centers = nc )
+table(kmc.cancer3$cluster)
+kmc.cancer3$centers
+kmax=10
+fviz_nbclust(bigdatanew, FUN = kmeans, method = "silhouette", k.max=kmax, nstart=1)
+nb =10
+topwords <-matrix(0,nrow=nc,ncol=nb)
+for (i in 1:nc)
+{
+  clusterdata = subset(bigdatanew[,c(-1,-2)], kmc.cancer3$cluster == i)
+  vv <- as.data.frame(tail(sort(colMeans(clusterdata)), n=nb))
+  topwords[i,]<- rownames(vv)
+}
+print(topwords)
+kmax=10
+fviz_nbclust(can, FUN = kmeans, method = "silhouette", k.max=kmax, nstart=1)
